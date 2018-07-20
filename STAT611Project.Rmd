@@ -1,0 +1,279 @@
+---
+title: "STAT611 Project"
+author: "Irem Celen"
+date: "7/19/2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+This document contains the descriptive statistics, assumption evaluation, and model selection with stepwise regression through AIC. For further results from different model selection models, please see the SAS outputs at the end of the document.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# <span style="color:blue"> 1. Yield Data</span>
+Necessary libraries
+```{r lib, warning=FALSE, message=F}
+library(readxl)
+library(dplyr)
+library(MASS)
+library(PerformanceAnalytics)
+library(fmsb)
+library(mctest)
+library(car)
+library(tidyr)
+```
+Read the data
+```{r read, warning=FALSE}
+yield <- read_excel("YieldLossData.xlsx", col_names = T)
+```
+Descriptive statistics
+```{r desc, warning=FALSE}
+summary(yield)
+#Check the variables resembling categorical variables. If categorical, convert to factors
+unique(yield$Flow) #three categories
+yield$Flow <- as.factor(yield$Flow)
+unique(yield$RPM) #four categories
+yield$RPM <- as.factor(yield$RPM)
+head(unique(yield$Conc)) #Continous
+unique(yield$Line) #five categories
+yield$Line <- as.factor(yield$Line)
+yield$Operator <- as.factor(yield$Operator)
+yield$Vendor <- as.factor(yield$Vendor)
+yield$Vacuum <- as.factor(yield$Vacuum)
+
+```
+
+### <span style="color:purple">Check missing values</span>
+```{r missing}
+which(is.na(yield))
+```
+
+
+###<span style="color:purple"> Matrix plot for all the variables</span>
+
+```{r pressure}
+pairs(yield)
+```
+
+### <span style="color:purple">Fit the model</span>
+```{r fit}
+#Fit the model and see the variable significance
+fit1=lm(YieldLoss ~ ., data=yield); summary(fit1)
+anova(fit1)
+```
+
+## <span style="color:green"> Assumption testing</span>
+###<span style="color:purple">1.Check if the dependent variable is normally distributed:</span>
+```{r assump}
+qqnorm(yield$YieldLoss); qqline(yield$YieldLoss) #looks normal
+```
+
+###<span style="color:purple">2.Residual plots</span>
+```{r resfit}
+# residuals vs fitted values
+par(mfrow = c(2, 3))
+plot(fit1$residuals ~ fit1$fitted.values) # nonlinear trend qqnorm(fit1$res)
+qqnorm(fit1$res);qqline(fit1$res);
+plot(fit1)
+```
+
+The residuals look homoscedastic and normally distributed. Transformation will not be applied. 
+
+###<span style="color:purple">3. Check for outliers</span>
+```{r out}
+outlierTest(fit1)
+```
+
+###<span style="color:purple">4. Influential observation detection with Cook's D and leverage obs. with hat values</span>
+```{r inf}
+avPlots(fit1)
+any(cooks.distance(fit1) > 1) #no influential observation
+#any observations 2-3 times greater than the average hat value to be considered as "leverage" observation
+#hatvalues(fit1)
+leveragePlots(fit1)
+hv <- as.data.frame(hatvalues(fit1))
+mn <-mean(hatvalues(fit1))
+hv$warn <- ifelse(hv[, 'hatvalues(fit1)']>3*mn, 'x3',
+   ifelse(hv[, 'hatvalues(fit1)']>2*mn, 'x3', '-' ))
+subset(hv, warn=="x3")
+subset(hv, warn%in%c("x2", "x3"))
+plot(hatvalues(fit1), type = "h") #100th record is a leverage point.
+#Remove the leverage point and see how it improves the model
+fit2 <- lm(YieldLoss ~ ., data=yield[-100,]); summary(fit2) 
+#model didn't improve drastically, so keep the leverage point in the dataset.
+```
+
+###<span style="color:purple">5. Check for multicollinearity</span>
+```{r multi}
+#Check the VIF and see if any VIF value is greater than 10
+vif(fit1) #No VIF is larger than 10. Thus, ridge or PCA will not be used.
+
+```
+Conc seems to have a potential multicollinearity but the VIF is less than 10. Thus, ridge or PCA will not be used.
+
+
+
+##<span style="color:red">Model selection</span>
+Select the model by using AIC in stepwise regression
+```{r model, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+selectedMod <- step(fit1)
+```
+```{r report}
+summary(selectedMod)
+```
+
+<bold>Final model is: YieldLoss ~ RPM + Temp1 + Conc + Line</bold>
+
+# <span style="color:blue"> 2. Inverter Data</span>
+
+Read the data
+```{r read2, warning=FALSE}
+Inverter <- read_excel("InverterData.xlsx", col_names = T)
+```
+Descriptive statistics
+```{r desc2, warning=FALSE}
+summary(Inverter)
+#Correlation between variables
+cor(Inverter) #No strong correlation
+#Check the variables resembling categorical variables. If categorical, convert to factors
+str(Inverter) ##There are only 25 records, Setpoint looks like a categorical variable
+Inverter$Setpoint <- as.factor(Inverter$Setpoint)
+#See the distribution of the independent variables
+par(mfrow = c(2, 2))
+boxplot(Inverter$WidthNMOS, main="WidthNMOS")
+outlierWidthNMOS <- boxplot.stats(Inverter$WidthNMOS)$out
+mtext(paste("Outliers: ", paste(outlierWidthNMOS, collapse=", ")), cex=0.6)
+boxplot(Inverter$LengthNMOS, main="LengthNMOS")
+outlierLengthNMOS <- boxplot.stats(Inverter$LengthNMOS)$out
+mtext(paste("Outliers: ", paste(outlierLengthNMOS, collapse=", ")), cex=0.6)
+boxplot(Inverter$WidthPMOS, main="WidthPMOS")
+outlierWidthPMOS <- boxplot.stats(Inverter$WidthPMOS)$out
+mtext(paste("Outliers: ", paste(outlierWidthPMOS, collapse=", ")), cex=0.6)
+boxplot(Inverter$LengthPMOS, main="LengthPMOS")
+outlierLengthPMOS <- boxplot.stats(Inverter$LengthPMOS)$out
+mtext(paste("Outliers: ", paste(outlierLengthPMOS, collapse=", ")), cex=0.6)
+
+#Change the outliers to the mean values
+Inverter[16,"WidthNMOS"] = mean(Inverter$WidthNMOS)
+Inverter[24,"LengthNMOS"] = mean(Inverter$LengthNMOS)
+Inverter[20,"LengthNMOS"] = mean(Inverter$LengthNMOS)
+Inverter[30,"LengthNMOS"] = mean(Inverter$LengthNMOS)
+Inverter[12,"LengthPMOS"] = mean(Inverter$LengthPMOS)
+Inverter[12,"WidthPMOS"] = mean(Inverter$WidthPMOS)
+
+### Matrix plot for all the variables
+
+```{r pressure2}
+pairs(Inverter)
+```
+
+###<span style="color:purple">Fit the model</span>
+```{r fit2}
+#Fit the model and see the variable significance
+fiti=lm(TransientPt ~ ., data=Inverter); summary(fiti)
+anova(fiti)
+```
+
+## <span style="color:green"> Assumption testing </span>
+###  <span style="color:purple"> 1.Check if the dependent variable is normally distributed: </span>
+```{r dependent2}
+hist(Inverter$TransientPt) #Not normal
+```
+```{r assump2}
+#QQ-plot to check the normality
+qqnorm(Inverter$TransientPt); qqline(Inverter$TransientPt) #NOT normal; try transformation
+```
+```{r trans2}
+#looks improved with log transformation
+qqnorm(log2(Inverter$TransientPt)); qqline(log2(Inverter$TransientPt)) 
+```
+Change the starting model for regression with the log transformed dependent variable
+```{r change2}
+fiti=lm(log2(TransientPt) ~ ., data=Inverter); summary(fiti)
+```
+###  <span style="color:purple"> 2.Residual plots</span>
+```{r resfit2}
+# residuals vs fitted values
+par(mfrow = c(2, 3))
+plot(fiti$residuals ~ fiti$fitted.values) # nonlinear trend qqnorm(fiti$res)
+qqnorm(fiti$res);qqline(fiti$res);
+plot(fiti)
+```
+
+The residuals does not look randomly distributed in the residual vs fitted plot. Further investigation will be conducted.
+
+### <span style="color:purple">3. Check for outliers </span>
+```{r out2}
+outlierTest(fiti) #Looks like the second record is an outlier.
+#Further investigation will be conducted
+```
+
+### <span style="color:purple">4. Influential observation detection with Cook's D and leverage obs. with hat values </span>
+```{r inf2}
+avPlots(fiti)
+any(cooks.distance(fiti) > 1) #there are influential observations based on cook's D
+#observations 2, 6, and 15 seem to be influential points; remove them and check the model
+Inv2 <- Inverter[-c(2,6,15),]
+fitii <- lm(log2(TransientPt)~.,data=Inv2)
+avPlots(fitii)
+any(cooks.distance(fitii) > 1)
+#any observations 2-3 times greater than the average hat value to be considered as "leverage" observation
+#hatvalues(fiti)
+leveragePlots(fitii)
+hv <- as.data.frame(hatvalues(fitii))
+mn <-mean(hatvalues(fitii))
+hv$warn <- ifelse(hv[, 'hatvalues(fitii)']>3*mn, 'x3',
+   ifelse(hv[, 'hatvalues(fitii)']>2*mn, 'x3', '-' ))
+subset(hv, warn=="x3")
+subset(hv, warn%in%c("x2", "x3"))
+plot(hatvalues(fitii), type = "h") #no leverage point
+#Check again for the outliers
+outlierTest(fitii) #The model has been cleaned from the outliers.
+
+```
+
+### <span style="color:purple">5. Check for multicollinearity</span>
+```{r multi2}
+#Check the VIF and see if any VIF value is greater than 10
+vif(fiti) #No VIF is larger than 10. Thus, ridge or PCA will not be used.
+
+```
+
+From the plots above, there seems to be a nonlinear pattern between the response variable and lengthNMOS. Thus, lengthNMOS will be log transformed and the distributions will be re-examined.
+
+### <span style="color:purple">Fit another model with log transformed lengthNMOS</span>
+
+```{r log2}
+Inv2$LengthNMOS <- log2(Inv2$LengthNMOS)
+fitiii <- lm(log2(TransientPt)~.,data=Inv2)
+avPlots(fitiii)
+any(cooks.distance(fitiii) > 1)
+#any observations 2-3 times greater than the average hat value to be considered as "leverage" observation
+#hatvalues(fiti)
+leveragePlots(fitiii)
+hv <- as.data.frame(hatvalues(fitiii))
+mn <-mean(hatvalues(fitiii))
+```
+
+### <span style="color:purple">Check residuals vs fitted values for fitiii</span>
+```{r recheck2}
+par(mfrow = c(2, 3))
+plot(fitiii$residuals ~ fitiii$fitted.values) 
+qqnorm(fitiii$res);qqline(fitiii$res);
+plot(fitiii)
+```
+Now, the diagnostic plots look fine. Model selection can be performed.
+
+##<span style="color:red">Model Selection</span>
+Stepwise model selection with AIC will be employed. Further examinations will be reported with SAS outputs.
+```{r model2, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+selectedMod <- step(fitiii)
+```
+```{r report2}
+summary(selectedMod)
+```
+
+Final model: log2(TransientPt) ~ WidthNMOS + LengthNMOS + WidthPMOS + LengthPMOS + 
+    Setpoint
