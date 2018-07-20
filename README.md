@@ -13,6 +13,7 @@
  <li>	Vendor:  supplier of the main raw material</li>
 </ul>
  Determine the best model for estimating the yield loss using the process data provided in the data file “YieldLossData.xlsx”.  
+
 2.	Data was collected from various electronic inverters in order to determine the relationship between design variables and the transient point (voltage).  The design variables measured include:
 <ul>
 <li>	WidthNMOS:  the width of the NMOS device </li>
