@@ -64,17 +64,17 @@ proc glm data=invert2 plots=diagnostics;
 	*Class specifies the indicator (dummy vars);
 	model LOGTransient=WidthNMOS LOGLengthNMOS WidthPMOS LengthPMOS Setpoint / 
 		solution;
-	run;
+run;
 	*Influence;
 
 proc reg data=invert2;
 	model LOGTransient=WidthNMOS LOGLengthNMOS WidthPMOS LengthPMOS Setpoint / 
 		influence p r partial;
-	run;
+run;
 
 proc glm data=invert2 plots=diagnostics;
 	model LOGVAR=Setpoint / solution;
-	run;
+run;
 	******;
 
 proc import datafile="/folders/myshortcuts/myfolders_/Inv2.xlsx" out=inv2 
@@ -84,19 +84,19 @@ run;
 DATA inv2;
 	SET inv2;
 	LOGTransient=log2(TransientPt);
-RUN;
+run;
 
 proc reg data=inv2;
 	model LOGTransient=WidthNMOS LengthNMOS WidthPMOS LengthPMOS Setpoint / 
 		influence p r partial;
-	run;
+run;
 
 proc glm data=inv2 plots=diagnostics;
 	class Setpoint;
 	*Class specifies the indicator (dummy vars);
 	model LOGTransient=WidthNMOS LengthNMOS WidthPMOS LengthPMOS Setpoint / 
 		solution;
-	run;
+run;
 	*Stepwise selection with Cp;
 
 proc glmselect data=inv2 plots=(asePlot Criteria);
