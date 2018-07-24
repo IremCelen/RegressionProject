@@ -6,7 +6,7 @@ output:
   html_document: default
   pdf_document: default
 ---
-This document contains the descriptive statistics, assumption evaluation, and model selection with stepwise regression through AIC. For further results from different model selection models, please see the SAS outputs at the end of the document.
+This document contains the descriptive statistics, assumption evaluation, and model selection with stepwise regression through AIC. For further results from different model selection methods, please see the SAS outputs at the end of the document.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
